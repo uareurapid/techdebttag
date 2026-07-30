@@ -1,0 +1,9 @@
+node_modules
+.next
+data
+.git
+.env
+.env.local
+README.md
+README.EXPLAIN.md
+.hermes
