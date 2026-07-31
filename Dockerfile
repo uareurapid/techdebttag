@@ -32,6 +32,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends git \
 WORKDIR /app
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
+ENV HOSTNAME=0.0.0.0
 
 # Create non-root user for security
 RUN addgroup --system --gid 1001 nodejs && \
