@@ -37,16 +37,17 @@ ENV NEXT_TELEMETRY_DISABLED=1
 RUN addgroup --system --gid 1001 nodejs && \
     adduser --system --uid 1001 nextjs
 
-# Copy standalone build output
-COPY --from=builder /app/public ./public
+# Copy standalone build output (Next.js standalone bundles the compiled app + deps)
 COPY --from=builder /app/.next/standalone ./
+
+# Copy static assets (separate from standalone in Next.js 14)
 COPY --from=builder /app/.next/static ./.next/static
 
-# Copy server modules (runtime code not bundled by standalone)
-COPY --from=builder /app/server ./server
+# Remove dev data directory (will use volume mount in production)
+RUN rm -rf /app/data
 
 # Create persistent data directory
-RUN mkdir -p data && chown -R nextjs:nodejs data
+RUN mkdir -p /app/data && chown -R nextjs:nodejs /app/data
 
 USER nextjs
 
