@@ -26,7 +26,7 @@ RUN npm run build
 
 # Stage 3: Production runner (only needs Node + git)
 FROM node:20-slim AS runner
-RUN apt-get update && apt-get install -y --no-install-recommends git \
+RUN apt-get update && apt-get install -y --no-install-recommends git ca-certificates \
   && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
