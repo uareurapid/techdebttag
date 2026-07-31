@@ -6,17 +6,25 @@ import { encrypt, decrypt } from './crypto';
 
 const DB_PATH = path.join(process.cwd(), 'data', 'techdebttag.db');
 
+console.log('[TechDebtTag] DB path:', DB_PATH);
+console.log('[TechDebtTag] NODE_ENV:', process.env.NODE_ENV);
+
 let db: Database.Database | null = null;
 
 export function getDb(): Database.Database {
   if (!db) {
     const fs = require('fs');
     const dir = path.dirname(DB_PATH);
-    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+    if (!fs.existsSync(dir)) {
+      console.log('[TechDebtTag] Creating data directory:', dir);
+      fs.mkdirSync(dir, { recursive: true });
+    }
 
+    console.log('[TechDebtTag] Opening database...');
     db = new Database(DB_PATH);
     db.pragma('journal_mode = WAL');
     db.pragma('foreign_keys = ON');
+    console.log('[TechDebtTag] Database ready');
     initSchema(db);
   }
   return db;
@@ -129,7 +137,7 @@ export function getRepo(id: number) {
 
 export function updateRepoLastCommit(id: number, sha: string) {
   const db = getDb();
-  db.prepare('UPDATE repos SET last_commit_sha = ?, updated_at = datetime(\'now\') WHERE id = ?').run(sha, id);
+  db.prepare("UPDATE repos SET last_commit_sha = ?, updated_at = datetime('now') WHERE id = ?").run(sha, id);
 }
 
 export function deleteRepo(id: number) {
@@ -148,13 +156,12 @@ export function createScan(repoId: number, commitSha?: string) {
 export function completeScan(scanId: number, totalFiles: number, totalFindings: number) {
   const db = getDb();
   db.prepare(
-    'UPDATE scans SET total_files = ?, total_findings = ?, status = \'completed\', completed_at = datetime(\'now\') WHERE id = ?'
+    "UPDATE scans SET total_files = ?, total_findings = ?, status = 'completed', completed_at = datetime('now') WHERE id = ?"
   ).run(totalFiles, totalFindings, scanId);
 }
 
 export function failScan(scanId: number, errorMessage?: string) {
   const db = getDb();
-  // Add error_message column if missing
   try { db.exec("ALTER TABLE scans ADD COLUMN error_message TEXT DEFAULT ''"); } catch { /* exists */ }
   db.prepare("UPDATE scans SET status = 'failed', error_message = ?, completed_at = datetime('now') WHERE id = ?").run(errorMessage || '', scanId);
 }
@@ -272,9 +279,6 @@ export function replaceScanFindings(scanId: number, repoId: number, findings: Om
   );
 
   const tx = db.transaction(() => {
-    // Mark old findings from this repo as resolved if not in new set
-    // Actually for simplicity, we mark all previous findings from this repo as resolved
-    // and only the new ones are active
     db.prepare('UPDATE findings SET resolved = 1 WHERE repo_id = ? AND resolved = 0').run(repoId);
 
     for (const f of findings) {
@@ -338,7 +342,6 @@ export function getRepoStats(repoId: number) {
   const repo = db.prepare('SELECT * FROM repos WHERE id = ?').get(repoId) as import('./types').Repo | undefined;
   if (!repo) return null;
 
-  // Add error_message column if missing
   try { db.exec("ALTER TABLE scans ADD COLUMN error_message TEXT DEFAULT ''"); } catch { /* exists */ }
 
   const latestScan = db.prepare('SELECT * FROM scans WHERE repo_id = ? ORDER BY id DESC LIMIT 1').get(repoId) as import('./types').Scan | undefined;
